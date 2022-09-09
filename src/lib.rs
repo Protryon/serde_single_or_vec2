@@ -54,8 +54,8 @@
 //!
 //! # Storage Backend
 //!
-//! The default Backend is a `Vec<T>` and thus always results in an allocation. 
-//! An alternativ is to use a `Cow<'_, T>` as backend which only requires an allocation 
+//! The default Backend is a `Vec<T>` and thus always results in an allocation.
+//! An alternativ is to use a `Cow<'_, T>` as backend which only requires an allocation
 //! for a single value.
 //!
 //! Note that this is only valid when using or serializing this value, deserialisation
@@ -92,19 +92,19 @@
 //!         b.split_first().map(|(t, r)| (t, r.len()))
 //!     }
 //! }
-//! 
+//!
 //! let json = "[0,1,2]";
 //! let res: SingleOrVec<'_, u8, PreferSingle, ArrayVecStorage> = serde_json::from_str(json).unwrap();
 //! assert_eq!(json, &serde_json::to_string(&res).unwrap());
-//! 
+//!
 //! let json = "0";
 //! let res: SingleOrVec<'_, u8, PreferSingle, ArrayVecStorage> = serde_json::from_str(json).unwrap();
 //! assert_eq!(json, &serde_json::to_string(&res).unwrap());
 //! ```
-//! 
+//!
 //! # `no_std`
-//! 
-//! It is possible to use this crate with `no_std`, however, like serde, either `std` or 
+//!
+//! It is possible to use this crate with `no_std`, however, like serde, either `std` or
 //! `alloc` is required.
 //!
 //! # License
@@ -125,51 +125,6 @@
 //! dual licensed as above, without any additional terms or conditions.
 //!
 
-#![warn(
-    absolute_paths_not_starting_with_crate,
-    anonymous_parameters,
-    box_pointers,
-    confusable_idents,
-    deprecated_in_future,
-    elided_lifetimes_in_paths,
-    explicit_outlives_requirements,
-    indirect_structural_match,
-    keyword_idents,
-    macro_use_extern_crate,
-    meta_variable_misuse,
-    missing_copy_implementations,
-    missing_crate_level_docs,
-    missing_debug_implementations,
-    missing_docs,
-    missing_doc_code_examples,
-    non_ascii_idents,
-    private_doc_tests,
-    single_use_lifetimes,
-    trivial_casts,
-    trivial_numeric_casts,
-    unaligned_references,
-    unreachable_pub,
-    unsafe_code,
-    unstable_features,
-    unused_crate_dependencies,
-    unused_extern_crates,
-    unused_import_braces,
-    unused_lifetimes,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences
-)]
-#![warn(
-    clippy::cargo,
-    clippy::complexity,
-    clippy::correctness,
-    clippy::nursery,
-    clippy::pedantic,
-    clippy::perf,
-    clippy::style
-)]
-#![allow(clippy::implicit_return, clippy::shadow_unrelated)]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]
@@ -178,17 +133,23 @@ extern crate alloc;
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 core::compile_error!("This crate requires either the std or the alloc feature");
 
+#[cfg(feature = "alloc")]
+use alloc::{borrow::Cow, vec, vec::Vec};
+use core::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash, Hasher},
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 use serde::{
+    __private::de::{Content, ContentRefDeserializer},
     de::{Deserializer, Error},
-    private::de::{Content, ContentRefDeserializer},
     ser::Serializer,
     Deserialize, Serialize,
 };
-use core::{marker::PhantomData, cmp::Ordering, hash::{Hash, Hasher}, ops::{Deref, DerefMut}, fmt};
 #[cfg(feature = "std")]
 use std::{borrow::Cow, vec, vec::Vec};
-#[cfg(feature = "alloc")]
-use alloc::{borrow::Cow, vec, vec::Vec};
 
 /// Specifies the internal Storage Type of the Sequence
 #[allow(unused_lifetimes)]
@@ -459,12 +420,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::SingleOrVec;
+    #[cfg(feature = "alloc")]
+    use alloc::{string::String, vec, vec::Vec};
     use arrayvec as _;
     use serde::{Deserialize, Serialize};
     #[cfg(feature = "std")]
-    use std::{vec, string::String, vec::Vec};
-    #[cfg(feature = "alloc")]
-    use alloc::{vec, string::String, vec::Vec};
+    use std::{string::String, vec, vec::Vec};
 
     macro_rules! multiple {
         ($t:ty, $i:expr, $e:expr) => {
@@ -641,10 +602,6 @@ mod tests {
 
     #[test]
     fn empty() {
-        single!(
-            SingleOrVec<'_, &str>,
-            SingleOrVec::new(vec![]),
-            "[]"
-        );
+        single!(SingleOrVec<'_, &str>, SingleOrVec::new(vec![]), "[]");
     }
 }

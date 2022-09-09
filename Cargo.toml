@@ -1,11 +1,11 @@
 [package]
-name = "serde_single_or_vec"
+name = "serde_single_or_vec2"
 version = "1.0.1"
-authors = ["Marc Mettke <marc@itmettke.de>"]
-edition = "2018"
+authors = ["Protryon <max.bruce12@gmail.com", "Marc Mettke <marc@itmettke.de>"]
+edition = "2021"
 description = "Type which can be deserialized from either a sequence or a single value"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/mettke/serde_single_or_vec"
+repository = "https://github.com/Protryon/serde_single_or_vec2"
 readme = "README.md"
 keywords = ["serde", "vec", "single"]
 categories = ["data-structures"]
