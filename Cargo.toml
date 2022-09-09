@@ -1,6 +1,6 @@
 [package]
 name = "serde_single_or_vec2"
-version = "1.0.1"
+version = "1.0.0"
 authors = ["Protryon <max.bruce12@gmail.com", "Marc Mettke <marc@itmettke.de>"]
 edition = "2021"
 description = "Type which can be deserialized from either a sequence or a single value"
