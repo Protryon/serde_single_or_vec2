@@ -124,6 +124,7 @@
 //! for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 //! dual licensed as above, without any additional terms or conditions.
 //!
+//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -143,13 +144,16 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use serde::{
-    __private::de::{Content, ContentRefDeserializer},
     de::{Deserializer, Error},
     ser::Serializer,
     Deserialize, Serialize,
 };
 #[cfg(feature = "std")]
 use std::{borrow::Cow, vec, vec::Vec};
+
+use crate::serde_content::ContentRefDeserializer;
+
+mod serde_content;
 
 /// Specifies the internal Storage Type of the Sequence
 #[allow(unused_lifetimes)]
@@ -408,7 +412,7 @@ where
     B: Deserialize<'de>,
 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let content = Content::deserialize(deserializer)?;
+        let content = serde_content::Content::deserialize(deserializer)?;
         <T as Deserialize>::deserialize(ContentRefDeserializer::<D::Error>::new(&content))
             .map(S::single)
             .or_else(|_| B::deserialize(ContentRefDeserializer::<D::Error>::new(&content)))
