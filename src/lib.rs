@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust
-//! # use serde_single_or_vec::SingleOrVec;
+//! # use serde_single_or_vec2::SingleOrVec;
 //! # use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Deserialize, Serialize)]
@@ -34,7 +34,7 @@
 //! this behaviour, its possible to define the output format.
 //!
 //! ```rust
-//! # use serde_single_or_vec::{SingleOrVec, PreferSingle, AlwaysVector};
+//! # use serde_single_or_vec2::{SingleOrVec, PreferSingle, AlwaysVector};
 //! # use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Deserialize, Serialize)]
@@ -63,7 +63,7 @@
 //!
 //! ```rust
 //! # use std::borrow::Cow;
-//! # use serde_single_or_vec::{SingleOrVec, PreferSingle};
+//! # use serde_single_or_vec2::{SingleOrVec, PreferSingle};
 //! let json = "[0,1,2]";
 //! let res: SingleOrVec<'_, u8, PreferSingle, Cow<'_, [u8]>> = serde_json::from_str(json).unwrap();
 //! assert_eq!(json, &serde_json::to_string(&res).unwrap());
@@ -74,7 +74,7 @@
 //! Its also possible to implement Custom Storage Backends by using the `Storage` Trait.
 //!
 //! ```rust
-//! # use serde_single_or_vec::{SingleOrVec, PreferSingle, Storage};
+//! # use serde_single_or_vec2::{SingleOrVec, PreferSingle, Storage};
 //! use arrayvec::ArrayVec;
 //!
 //! struct ArrayVecStorage {}
