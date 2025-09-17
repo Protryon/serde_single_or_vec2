@@ -212,7 +212,7 @@ impl<'de> Visitor<'de> for ContentVisitor<'de> {
     {
         let mut vec =
             Vec::<Content>::with_capacity(size_hint::cautious::<Content>(visitor.size_hint()));
-        while let Some(e) = r#try!(visitor.next_element()) {
+        while let Some(e) = visitor.next_element()? {
             vec.push(e);
         }
         Ok(Content::Seq(vec))
@@ -226,7 +226,7 @@ impl<'de> Visitor<'de> for ContentVisitor<'de> {
             Content,
             Content,
         )>(visitor.size_hint()));
-        while let Some(kv) = r#try!(visitor.next_entry()) {
+        while let Some(kv) = visitor.next_entry()? {
             vec.push(kv);
         }
         Ok(Content::Map(vec))
@@ -246,9 +246,7 @@ use core::marker::PhantomData;
 
 use serde::*;
 
-use serde::de::value::{BorrowedBytesDeserializer, BytesDeserializer};
 use serde::de::*;
-use std::borrow::Cow;
 use std::{fmt, slice};
 
 use crate::serde_content::content::EnumDeserializer;
@@ -355,7 +353,6 @@ mod content {
         }
     }
 
-    
     impl<'de> DeserializeSeed<'de> for ContentVisitor<'de> {
         type Value = Content<'de>;
 
@@ -367,7 +364,6 @@ mod content {
         }
     }
 
-    
     impl<'de> Visitor<'de> for ContentVisitor<'de> {
         type Value = Content<'de>;
 
@@ -519,7 +515,7 @@ mod content {
         where
             D: Deserializer<'de>,
         {
-            let v = r#try!(ContentVisitor::new().deserialize(deserializer));
+            let v = ContentVisitor::new().deserialize(deserializer)?;
             Ok(Content::Some(Box::new(v)))
         }
 
@@ -527,7 +523,7 @@ mod content {
         where
             D: Deserializer<'de>,
         {
-            let v = r#try!(ContentVisitor::new().deserialize(deserializer));
+            let v = ContentVisitor::new().deserialize(deserializer)?;
             Ok(Content::Newtype(Box::new(v)))
         }
 
@@ -537,7 +533,7 @@ mod content {
         {
             let mut vec =
                 Vec::<Content>::with_capacity(size_hint::cautious::<Content>(visitor.size_hint()));
-            while let Some(e) = r#try!(visitor.next_element_seed(ContentVisitor::new())) {
+            while let Some(e) = visitor.next_element_seed(ContentVisitor::new())? {
                 vec.push(e);
             }
             Ok(Content::Seq(vec))
@@ -552,7 +548,7 @@ mod content {
                     size_hint::cautious::<(Content, Content)>(visitor.size_hint()),
                 );
             while let Some(kv) =
-                r#try!(visitor.next_entry_seed(ContentVisitor::new(), ContentVisitor::new()))
+                visitor.next_entry_seed(ContentVisitor::new(), ContentVisitor::new())?
             {
                 vec.push(kv);
             }
@@ -593,7 +589,6 @@ mod content {
         }
     }
 
-    
     impl<'de> DeserializeSeed<'de> for TagOrContentVisitor<'de> {
         type Value = TagOrContent<'de>;
 
@@ -607,7 +602,6 @@ mod content {
         }
     }
 
-    
     impl<'de> Visitor<'de> for TagOrContentVisitor<'de> {
         type Value = TagOrContent<'de>;
 
@@ -877,19 +871,6 @@ mod content {
         value: PhantomData<T>,
     }
 
-    impl<T> TaggedContentVisitor<T> {
-        /// Visitor for the content of an internally tagged enum with the given
-        /// tag name.
-        pub fn new(name: &'static str, expecting: &'static str) -> Self {
-            TaggedContentVisitor {
-                tag_name: name,
-                expecting,
-                value: PhantomData,
-            }
-        }
-    }
-
-    
     impl<'de, T> Visitor<'de> for TaggedContentVisitor<T>
     where
         T: Deserialize<'de>,
@@ -904,14 +885,14 @@ mod content {
         where
             S: SeqAccess<'de>,
         {
-            let tag = match r#try!(seq.next_element()) {
+            let tag = match seq.next_element()? {
                 Some(tag) => tag,
                 None => {
                     return Err(de::Error::missing_field(self.tag_name));
                 }
             };
             let rest = de::value::SeqAccessDeserializer::new(seq);
-            Ok((tag, r#try!(ContentVisitor::new().deserialize(rest))))
+            Ok((tag, ContentVisitor::new().deserialize(rest)?))
         }
 
         fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
@@ -923,16 +904,16 @@ mod content {
                 Content,
                 Content,
             )>(map.size_hint()));
-            while let Some(k) = r#try!(map.next_key_seed(TagOrContentVisitor::new(self.tag_name))) {
+            while let Some(k) = map.next_key_seed(TagOrContentVisitor::new(self.tag_name))? {
                 match k {
                     TagOrContent::Tag => {
                         if tag.is_some() {
                             return Err(de::Error::duplicate_field(self.tag_name));
                         }
-                        tag = Some(r#try!(map.next_value()));
+                        tag = Some(map.next_value()?);
                     }
                     TagOrContent::Content(k) => {
-                        let v = r#try!(map.next_value_seed(ContentVisitor::new()));
+                        let v = map.next_value_seed(ContentVisitor::new())?;
                         vec.push((k, v));
                     }
                 }
@@ -960,7 +941,6 @@ mod content {
         pub content: &'static str,
     }
 
-    
     impl<'de> DeserializeSeed<'de> for TagOrContentFieldVisitor {
         type Value = TagOrContentField;
 
@@ -972,7 +952,6 @@ mod content {
         }
     }
 
-    
     impl<'de> Visitor<'de> for TagOrContentFieldVisitor {
         type Value = TagOrContentField;
 
@@ -1039,7 +1018,6 @@ mod content {
         pub content: &'static str,
     }
 
-    
     impl<'de> DeserializeSeed<'de> for TagContentOtherFieldVisitor {
         type Value = TagContentOtherField;
 
@@ -1051,7 +1029,6 @@ mod content {
         }
     }
 
-    
     impl<'de> Visitor<'de> for TagContentOtherFieldVisitor {
         type Value = TagContentOtherField;
 
@@ -1153,8 +1130,8 @@ mod content {
         E: de::Error,
     {
         let mut seq_visitor = SeqDeserializer::new(content);
-        let value = r#try!(visitor.visit_seq(&mut seq_visitor));
-        r#try!(seq_visitor.end());
+        let value = visitor.visit_seq(&mut seq_visitor)?;
+        seq_visitor.end()?;
         Ok(value)
     }
 
@@ -1167,14 +1144,14 @@ mod content {
         E: de::Error,
     {
         let mut map_visitor = MapDeserializer::new(content);
-        let value = r#try!(visitor.visit_map(&mut map_visitor));
-        r#try!(map_visitor.end());
+        let value = visitor.visit_map(&mut map_visitor)?;
+        map_visitor.end()?;
         Ok(value)
     }
 
     /// Used when deserializing an internally tagged enum because the content
     /// will be used exactly once.
-    
+
     impl<'de, E> Deserializer<'de> for ContentDeserializer<'de, E>
     where
         E: de::Error,
@@ -1586,7 +1563,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> Deserializer<'de> for SeqDeserializer<'de, E>
     where
         E: de::Error,
@@ -1597,8 +1573,8 @@ mod content {
         where
             V: Visitor<'de>,
         {
-            let v = r#try!(visitor.visit_seq(&mut self));
-            r#try!(self.end());
+            let v = visitor.visit_seq(&mut self)?;
+            self.end()?;
             Ok(v)
         }
 
@@ -1609,7 +1585,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> SeqAccess<'de> for SeqDeserializer<'de, E>
     where
         E: de::Error,
@@ -1636,7 +1611,6 @@ mod content {
 
     struct ExpectedInSeq(usize);
 
-    
     impl Expected for ExpectedInSeq {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             if self.0 == 1 {
@@ -1696,7 +1670,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> Deserializer<'de> for MapDeserializer<'de, E>
     where
         E: de::Error,
@@ -1707,8 +1680,8 @@ mod content {
         where
             V: Visitor<'de>,
         {
-            let value = r#try!(visitor.visit_map(&mut self));
-            r#try!(self.end());
+            let value = visitor.visit_map(&mut self)?;
+            self.end()?;
             Ok(value)
         }
 
@@ -1716,8 +1689,8 @@ mod content {
         where
             V: Visitor<'de>,
         {
-            let value = r#try!(visitor.visit_seq(&mut self));
-            r#try!(self.end());
+            let value = visitor.visit_seq(&mut self)?;
+            self.end()?;
             Ok(value)
         }
 
@@ -1736,7 +1709,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> MapAccess<'de> for MapDeserializer<'de, E>
     where
         E: de::Error,
@@ -1778,8 +1750,8 @@ mod content {
         {
             match self.next_pair() {
                 Some((key, value)) => {
-                    let key = r#try!(kseed.deserialize(ContentDeserializer::new(key)));
-                    let value = r#try!(vseed.deserialize(ContentDeserializer::new(value)));
+                    let key = kseed.deserialize(ContentDeserializer::new(key))?;
+                    let value = vseed.deserialize(ContentDeserializer::new(value))?;
                     Ok(Some((key, value)))
                 }
                 None => Ok(None),
@@ -1791,7 +1763,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> SeqAccess<'de> for MapDeserializer<'de, E>
     where
         E: de::Error,
@@ -1818,7 +1789,6 @@ mod content {
 
     struct PairDeserializer<'de, E>(Content<'de>, Content<'de>, PhantomData<E>);
 
-    
     impl<'de, E> Deserializer<'de> for PairDeserializer<'de, E>
     where
         E: de::Error,
@@ -1843,7 +1813,7 @@ mod content {
             V: Visitor<'de>,
         {
             let mut pair_visitor = PairVisitor(Some(self.0), Some(self.1), PhantomData);
-            let pair = r#try!(visitor.visit_seq(&mut pair_visitor));
+            let pair = visitor.visit_seq(&mut pair_visitor)?;
             if pair_visitor.1.is_none() {
                 Ok(pair)
             } else {
@@ -1870,7 +1840,6 @@ mod content {
 
     struct PairVisitor<'de, E>(Option<Content<'de>>, Option<Content<'de>>, PhantomData<E>);
 
-    
     impl<'de, E> SeqAccess<'de> for PairVisitor<'de, E>
     where
         E: de::Error,
@@ -1903,7 +1872,6 @@ mod content {
 
     struct ExpectedInMap(usize);
 
-    
     impl Expected for ExpectedInMap {
         fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             if self.0 == 1 {
@@ -1936,7 +1904,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> de::EnumAccess<'de> for EnumDeserializer<'de, E>
     where
         E: de::Error,
@@ -1965,7 +1932,6 @@ mod content {
         err: PhantomData<E>,
     }
 
-    
     impl<'de, E> de::VariantAccess<'de> for VariantDeserializer<'de, E>
     where
         E: de::Error,
@@ -2099,8 +2065,8 @@ mod content {
         E: de::Error,
     {
         let mut seq_visitor = SeqRefDeserializer::new(content);
-        let value = r#try!(visitor.visit_seq(&mut seq_visitor));
-        r#try!(seq_visitor.end());
+        let value = visitor.visit_seq(&mut seq_visitor)?;
+        seq_visitor.end()?;
         Ok(value)
     }
 
@@ -2113,14 +2079,14 @@ mod content {
         E: de::Error,
     {
         let mut map_visitor = MapRefDeserializer::new(content);
-        let value = r#try!(visitor.visit_map(&mut map_visitor));
-        r#try!(map_visitor.end());
+        let value = visitor.visit_map(&mut map_visitor)?;
+        map_visitor.end()?;
         Ok(value)
     }
 
     /// Used when deserializing an untagged enum because the content may need
     /// to be used more than once.
-    
+
     impl<'de, 'a, E> Deserializer<'de> for ContentRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2491,10 +2457,8 @@ mod content {
         }
     }
 
-    
     impl<'a, 'de: 'a, E> Copy for ContentRefDeserializer<'a, 'de, E> {}
 
-    
     impl<'a, 'de: 'a, E> Clone for ContentRefDeserializer<'a, 'de, E> {
         fn clone(&self) -> Self {
             *self
@@ -2536,7 +2500,6 @@ mod content {
         }
     }
 
-    
     impl<'a, 'de, E> Deserializer<'de> for SeqRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2547,8 +2510,8 @@ mod content {
         where
             V: Visitor<'de>,
         {
-            let v = r#try!(visitor.visit_seq(&mut self));
-            r#try!(self.end());
+            let v = visitor.visit_seq(&mut self)?;
+            self.end()?;
             Ok(v)
         }
 
@@ -2559,7 +2522,6 @@ mod content {
         }
     }
 
-    
     impl<'a, 'de, E> SeqAccess<'de> for SeqRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2634,7 +2596,6 @@ mod content {
         }
     }
 
-    
     impl<'a, 'de, E> Deserializer<'de> for MapRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2645,8 +2606,8 @@ mod content {
         where
             V: Visitor<'de>,
         {
-            let value = r#try!(visitor.visit_map(&mut self));
-            r#try!(self.end());
+            let value = visitor.visit_map(&mut self)?;
+            self.end()?;
             Ok(value)
         }
 
@@ -2654,8 +2615,8 @@ mod content {
         where
             V: Visitor<'de>,
         {
-            let value = r#try!(visitor.visit_seq(&mut self));
-            r#try!(self.end());
+            let value = visitor.visit_seq(&mut self)?;
+            self.end()?;
             Ok(value)
         }
 
@@ -2674,7 +2635,6 @@ mod content {
         }
     }
 
-    
     impl<'a, 'de, E> MapAccess<'de> for MapRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2716,8 +2676,8 @@ mod content {
         {
             match self.next_pair() {
                 Some((key, value)) => {
-                    let key = r#try!(kseed.deserialize(ContentRefDeserializer::new(key)));
-                    let value = r#try!(vseed.deserialize(ContentRefDeserializer::new(value)));
+                    let key = kseed.deserialize(ContentRefDeserializer::new(key))?;
+                    let value = vseed.deserialize(ContentRefDeserializer::new(value))?;
                     Ok(Some((key, value)))
                 }
                 None => Ok(None),
@@ -2729,7 +2689,6 @@ mod content {
         }
     }
 
-    
     impl<'a, 'de, E> SeqAccess<'de> for MapRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2756,7 +2715,6 @@ mod content {
 
     struct PairRefDeserializer<'a, 'de, E>(&'a Content<'de>, &'a Content<'de>, PhantomData<E>);
 
-    
     impl<'a, 'de, E> Deserializer<'de> for PairRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2781,7 +2739,7 @@ mod content {
             V: Visitor<'de>,
         {
             let mut pair_visitor = PairRefVisitor(Some(self.0), Some(self.1), PhantomData);
-            let pair = r#try!(visitor.visit_seq(&mut pair_visitor));
+            let pair = visitor.visit_seq(&mut pair_visitor)?;
             if pair_visitor.1.is_none() {
                 Ok(pair)
             } else {
@@ -2812,7 +2770,6 @@ mod content {
         PhantomData<E>,
     );
 
-    
     impl<'a, 'de, E> SeqAccess<'de> for PairRefVisitor<'a, 'de, E>
     where
         E: de::Error,
@@ -2852,7 +2809,6 @@ mod content {
         err: PhantomData<E>,
     }
 
-    
     impl<'de, 'a, E> de::EnumAccess<'de> for EnumRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2881,7 +2837,6 @@ mod content {
         err: PhantomData<E>,
     }
 
-    
     impl<'de, 'a, E> de::VariantAccess<'de> for VariantRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -2968,7 +2923,6 @@ mod content {
         }
     }
 
-    
     impl<'de, E> de::IntoDeserializer<'de, E> for ContentDeserializer<'de, E>
     where
         E: de::Error,
@@ -2980,7 +2934,6 @@ mod content {
         }
     }
 
-    
     impl<'de, 'a, E> de::IntoDeserializer<'de, E> for ContentRefDeserializer<'a, 'de, E>
     where
         E: de::Error,
@@ -3000,17 +2953,6 @@ mod content {
         variant_name: &'a str,
     }
 
-    impl<'a> InternallyTaggedUnitVisitor<'a> {
-        /// Not public API.
-        pub fn new(type_name: &'a str, variant_name: &'a str) -> Self {
-            InternallyTaggedUnitVisitor {
-                type_name,
-                variant_name,
-            }
-        }
-    }
-
-    
     impl<'de, 'a> Visitor<'de> for InternallyTaggedUnitVisitor<'a> {
         type Value = ();
 
@@ -3033,7 +2975,7 @@ mod content {
         where
             M: MapAccess<'de>,
         {
-            while r#try!(access.next_entry::<IgnoredAny, IgnoredAny>()).is_some() {}
+            while access.next_entry::<IgnoredAny, IgnoredAny>()?.is_some() {}
             Ok(())
         }
     }
@@ -3046,17 +2988,6 @@ mod content {
         variant_name: &'a str,
     }
 
-    impl<'a> UntaggedUnitVisitor<'a> {
-        /// Not public API.
-        pub fn new(type_name: &'a str, variant_name: &'a str) -> Self {
-            UntaggedUnitVisitor {
-                type_name,
-                variant_name,
-            }
-        }
-    }
-
-    
     impl<'de, 'a> Visitor<'de> for UntaggedUnitVisitor<'a> {
         type Value = ();
 
@@ -3086,41 +3017,10 @@ mod content {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// Like `IntoDeserializer` but also implemented for `&[u8]`. This is used for
-// the newtype fallthrough case of `field_identifier`.
-//
-//    #[derive(Deserialize)]
-//    #[serde(field_identifier)]
-//    enum F {
-//        A,
-//        B,
-//        Other(String), // deserialized using IdentifierDeserializer
-//    }
-pub trait IdentifierDeserializer<'de, E: Error> {
-    type Deserializer: Deserializer<'de, Error = E>;
-
-    fn from(self) -> Self::Deserializer;
-}
-
-pub struct Borrowed<'de, T: 'de + ?Sized>(pub &'de T);
-
-
-impl<'de, E> IdentifierDeserializer<'de, E> for u64
-where
-    E: Error,
-{
-    type Deserializer = <u64 as IntoDeserializer<'de, E>>::Deserializer;
-
-    fn from(self) -> Self::Deserializer {
-        self.into_deserializer()
-    }
-}
-
 pub struct StrDeserializer<'a, E> {
     value: &'a str,
     marker: PhantomData<E>,
 }
-
 
 impl<'de, 'a, E> Deserializer<'de> for StrDeserializer<'a, E>
 where
@@ -3147,7 +3047,6 @@ pub struct BorrowedStrDeserializer<'de, E> {
     marker: PhantomData<E>,
 }
 
-
 impl<'de, E> Deserializer<'de> for BorrowedStrDeserializer<'de, E>
 where
     E: Error,
@@ -3165,60 +3064,6 @@ where
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
         bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
-    }
-}
-
-
-impl<'a, E> IdentifierDeserializer<'a, E> for &'a str
-where
-    E: Error,
-{
-    type Deserializer = StrDeserializer<'a, E>;
-
-    fn from(self) -> Self::Deserializer {
-        StrDeserializer {
-            value: self,
-            marker: PhantomData,
-        }
-    }
-}
-
-
-impl<'de, E> IdentifierDeserializer<'de, E> for Borrowed<'de, str>
-where
-    E: Error,
-{
-    type Deserializer = BorrowedStrDeserializer<'de, E>;
-
-    fn from(self) -> Self::Deserializer {
-        BorrowedStrDeserializer {
-            value: self.0,
-            marker: PhantomData,
-        }
-    }
-}
-
-
-impl<'a, E> IdentifierDeserializer<'a, E> for &'a [u8]
-where
-    E: Error,
-{
-    type Deserializer = BytesDeserializer<'a, E>;
-
-    fn from(self) -> Self::Deserializer {
-        BytesDeserializer::new(self)
-    }
-}
-
-
-impl<'de, E> IdentifierDeserializer<'de, E> for Borrowed<'de, [u8]>
-where
-    E: Error,
-{
-    type Deserializer = BorrowedBytesDeserializer<'de, E>;
-
-    fn from(self) -> Self::Deserializer {
-        BorrowedBytesDeserializer::new(self.0)
     }
 }
 
@@ -3499,7 +3344,6 @@ pub struct AdjacentlyTaggedEnumVariantVisitor<F> {
     fields_enum: PhantomData<F>,
 }
 
-
 impl<'de, F> Visitor<'de> for AdjacentlyTaggedEnumVariantVisitor<F>
 where
     F: Deserialize<'de>,
@@ -3514,12 +3358,11 @@ where
     where
         A: EnumAccess<'de>,
     {
-        let (variant, variant_access) = r#try!(data.variant());
-        r#try!(variant_access.unit_variant());
+        let (variant, variant_access) = data.variant()?;
+        variant_access.unit_variant()?;
         Ok(variant)
     }
 }
-
 
 impl<'de, F> DeserializeSeed<'de> for AdjacentlyTaggedEnumVariantSeed<F>
 where
